@@ -1,113 +1,140 @@
-# Reto 2 · Fenotipado digital de secuelas post-infecciosas
+# Winning project of the Respira Hackathon
 
-Identificamos fenotipos de las secuelas tras una infección respiratoria grave que **se mantienen al cambiar de cohorte**, describimos **cómo evolucionan** y estudiamos **cuándo se pueden predecir**. Datos: cuatro cohortes (CIBERESUCICOVID, POSTCOVID-Lleida, TENACITY y Virgen del Rocío), 9.809 pacientes únicos.
+# Cross-Cohort Lung Phenotypes after Severe Respiratory Infection
 
-**El notebook a presentar es [`main.ipynb`](main.ipynb).** Resume el proyecto de principio a fin. Los notebooks numerados de [`Workflow/`](Workflow) desarrollan cada paso con más detalle.
+**Digital phenotyping of post-infectious sequelae (Challenge 2).** We looked for groups of patients with lasting sequelae after a severe respiratory infection (mostly COVID-19 ICU and ward patients) that **hold up when you move to a different cohort**, described **how they evolve over time**, and studied **when in follow-up they can be predicted**.
 
-## Resultados en tres frases
+The project works with a **dataset of real-world clinical data from real patients**, provided under privacy safeguards during the hackathon. It merges four Spanish clinical cohorts (CIBERESUCICOVID, POSTCOVID-Lleida, TENACITY and Virgen del Rocío) and covers **9,809 unique patients**: demographics, comorbidities, hospital and ICU stay, and follow-up visits with lung function tests, symptoms, CT imaging and questionnaires.
 
-1. **Un fenotipo que viaja.** Con lo que las tres cohortes miden igual (DLCO, FVC y FEV1), a los 3 meses salen dos fenotipos: **F1 · función conservada** y **F2 · afectación funcional**.
-   - Son estables (Jaccard 0,92).
-   - Se reproducen al dejar fuera cada cohorte (ARI 0,50–0,73).
-   - Los fenotipos de síntomas de una sola cohorte no se reproducen.
-2. **Evolucionan distinto.** Los dos mejoran, pero al año F2 sigue **11,5 puntos de DLCO por debajo** de F1 y por debajo del 80 %, en todas las cohortes.
-3. **Se predice en la visita de los 3 meses, no al alta.**
-   - Con los datos del alta, AUC ≈ 0,63 con cualquier modelo.
-   - A los 3 meses, **la DLCO sola** predice quién seguirá alterado al año: AUC 0,79 en cohortes no vistas. Ningún modelo más complejo la mejora.
+> **The question was not "are there subgroups?"** Clustering always finds subgroups. The real question is whether they **survive a change of cohort**. The whole project is built around that idea.
 
-## Estructura
+---
 
-```
-├── main.ipynb                         ← notebook de la presentación (resumen ejecutable)
-├── Workflow/
-│   ├── 01_analisis_exploratorio.ipynb  ← qué datos hay, de quién, cuándo y con qué calidad
-│   ├── 02_limpieza.ipynb               ← 14 reglas de limpieza, flujo de pacientes, tablas limpias
-│   ├── 03_fenotipado_ciberes.ipynb     ← fenotipos en CIBERESUCICOVID (síntomas + función): no viajan
-│   ├── 04_fenotipado_comun.ipynb       ← fenotipos con las 3 cohortes juntas: el fenotipo principal
-│   ├── 05_trayectorias.ipynb           ← evolución de la DLCO por fenotipo (modelo mixto, abandono, transiciones)
-│   ├── 06_modelo_alta.ipynb            ← ¿se predice el fenotipo con los datos del alta? (EBM, 3 cohortes)
-│   ├── 07_modelo_fase_aguda.ipynb      ← ¿y añadiendo la fase aguda? (EBM, solo CIBERESUCICOVID)
-│   └── 08_modelo_primera_visita.ipynb  ← en la visita de 3 meses: ¿quién sigue alterado al año?
-├── config.yaml                     ← todos los parámetros (umbrales, ventanas, k, semillas, rutas)
-├── src/                            ← funciones reutilizables (con docstrings)
-│   ├── carga.py                    lectura de datos y tablas largas de seguimiento
-│   ├── limpieza.py                 reglas R01–R14 y registro de limpieza
-│   ├── fenotipado.py               distancia de Gower, PAM, prueba nula, estabilidad
-│   ├── fenotipado_perfil.py        fenotipado a partir de un perfil de config.yaml
-│   ├── pasaporte.py                replicación entre cohortes (húngaro, Jaccard, ARI)
-│   ├── trayectorias.py             modelos mixtos, contrastes, IPW
-│   ├── fichas.py                   tabla de diferencias entre fenotipos (SMD e interpretación)
-│   └── privacidad.py               supresión de celdas con N < 10
-└
-├── informe.md                  ← informe completo: métodos, resultados, limitaciones, preguntas del jurado
+## Key results
 
-```
+### 1. A phenotype that travels across cohorts
+Using only what all cohorts measure the same way (**DLCO, FVC and FEV1** at ~3 months after discharge), two phenotypes emerge:
 
-Al ejecutar, los notebooks crean `outputs/figuras/` y `outputs/tablas/` (solo agregados; `main/` para el notebook principal). No se versionan.
+| Phenotype | Patients | DLCO | FVC | FEV1 |
+|---|---|---|---|---|
+| **F1 · Preserved function** | 821 | 79 % | 96 % | 99 % |
+| **F2 · Functional impairment** | 753 | 65 % | 73 % | 76 % |
 
-## Qué produce cada notebook
+- **Stable:** bootstrap Jaccard 0.92.
+- **Not a cohort artefact:** Cramér's V between phenotype and cohort is 0.12.
+- **Replicates out of sample:** trained on two cohorts and tested on the third, ARI 0.50–0.73.
+- **Negative result, reported anyway:** richer symptom-based phenotypes found in a single cohort (CIBERESUCICOVID) **did not replicate** elsewhere.
 
-Los notebooks se ejecutan **en orden**. Cada uno lee lo que generan los anteriores (en `../Datos limpios/`, fuera del repositorio).
+### 2. The phenotypes evolve differently
+Both groups improve, but the gap barely closes. A linear mixed model of DLCO over time gives:
 
-| Notebook | Lee | Genera |
+| | 3 months | 6 months | 12 months |
+|---|---|---|---|
+| F1 · Preserved function | 79.4 % | 82.7 % | 86.1 % |
+| F2 · Functional impairment | 65.4 % | 70.0 % | 74.6 % |
+| **Difference F2 − F1** | −14.0 | −12.7 | **−11.5** [−13.6, −9.3] |
+
+At one year F2 is still below the 80 % clinical threshold on average. The gap replicates in each cohort and holds after correcting for informative dropout (IPW) and for regression to the mean. In POSTCOVID-Lleida it persists for up to 4 years.
+
+### 3. Prediction works at the 3-month visit, not at discharge
+- **At discharge**, every model tops out at **AUC ≈ 0.63** (logistic regression and EBM give the same result). Adding acute-phase ICU data barely helps (≈ 0.65). The limit is the information available at discharge, not the algorithm.
+- **At the 3-month visit**, **DLCO alone** predicts who will still be impaired at one year: **AUC 0.79** among impaired patients in unseen cohorts. **No more complex model beats it.**
+
+**Pocket table:** of the patients with DLCO < 80 % at 3 months, how many recover by one year?
+
+| DLCO at 3 months | Recover at 1 year |
+|---|---|
+| < 60 % | 7 % [4–13] |
+| 60–69 % | 24 % [17–33] |
+| 70–79 % | 62 % [53–71] |
+
+**Clinical takeaway:** the spirometry + DLCO test at 3 months should guide follow-up. F1 tends to normalise by around 6 months. F2 needs follow-up beyond the first year.
+
+---
+
+## Approach: the phenotype "passport"
+
+Before running any clustering we fixed, in [`config.yaml`](config.yaml), what a phenotype must pass to count as real. A phenotype that fails is still reported, as not replicated. Nothing was tuned to make it pass.
+
+| Check | How it is measured | Result (main phenotype) |
 |---|---|---|
-| 01 Exploración | datos crudos | figuras `01_eda_*` |
-| 02 Limpieza | datos crudos | `pacientes`, `medidas`, `estado_definicion`, `visitas_tenacity`, `registro_limpieza`, `flujo_consort` |
-| 03 Fenotipado CIBERESUCICOVID | tablas limpias | `fenotipos.parquet` |
-| 04 Fenotipado común | tablas limpias | `fenotipos_comun.parquet`, `base_modelo.parquet` |
-| 05 Trayectorias | `fenotipos_comun` | figuras y tablas `05_tray_*` |
-| 06 Modelo al alta | `base_modelo` | `modelo_ebm_h3.pkl` |
-| 07 Modelo con fase aguda | `base_modelo` + tabla completa | `modelos_ebm_ciberes_funcional.pkl` |
-| 08 Modelo de la primera visita | tablas limpias | `modelo_primera_visita.pkl` |
-| `main` | datos crudos | resumen; regenera lo que necesita (tablas limpias y fenotipos) |
+| Has structure | Silhouette vs. a null of 100 column-permuted datasets (must beat the 95th percentile) | ✅ 0.36 vs. 0.11 |
+| Is stable | Per-cluster bootstrap Jaccard, 200 resamples (≥ 0.75) | ✅ 0.92 |
+| Travels | Leave-one-cohort-out: medoid transfer vs. native clustering (ARI, Hungarian-matched Jaccard) | ✅ ARI 0.50–0.73 |
+| Evolves differently | Mixed model `DLCO ~ phenotype × log(time)` | ✅ −11.5 points at 12 months |
+| Recognisable with few variables | 1–2 question decision tree validated on unseen cohorts | ✅ "FVC at 3 m ≤ 83 %?" matches 95–97 % |
+| Makes clinical sense | Profiles built from variables **not** used to define the phenotype | Pending review by the clinical team |
 
-## Cómo ejecutarlo
+### Why this was hard
+- **90.5 % of the cells in the merged table are empty.** Each registry used its own case report form, and only **13 clinical variables are shared** by all four cohorts.
+- **Who gets a DLCO depends on the hospital:** 36 of 76 CIBERESUCICOVID centres never measure it.
+- **Cohorts measure at different times and on different populations**, so we used real dates and fixed clinical ranges instead of per-cohort z-scores (which would erase real differences).
+- **Dropout is informative:** patients who don't come back at one year started with a DLCO 6–7 points higher.
+- **437 patients appear in two registries**, with the same test recorded twice. Each patient is assigned to a single analysis cohort so that "replication" never reuses the same people.
 
-1. **Datos.** No están en el repositorio: son datos de pacientes. La ruta se fija en `config.yaml → rutas.datos`. Por defecto es `../SECUELAS-Challenge/DATOS COVID Y OTROS VIRUS RESPIRATORIOS/bases_reto2/`, con `cohorte_unificada_nucleo.csv`, `cohorte_unificada.csv` y el diccionario. Las tablas limpias se guardan en `../Datos limpios/`.
-2. **Entorno** (Python 3.13):
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate          # Windows
-   pip install pandas numpy scipy scikit-learn statsmodels matplotlib seaborn plotly pyyaml openpyxl nbformat nbconvert ipykernel pyarrow kmedoids interpret-core
-   ```
-   La lista comentada está al final, en *Requerimientos*.
-3. **Ejecución:** abrir los notebooks de `Workflow/` en orden (01 → 08) y ejecutar todo, o directamente `main.ipynb`. Funcionan tanto desde la raíz como desde `Workflow/`. Desde la terminal:
-   ```bash
-   python -m nbconvert --to notebook --execute --inplace Workflow/01_analisis_exploratorio.ipynb
-   ```
-   Los clustering con permutaciones y bootstrap (notebooks 03, 04 y `main`) tardan varios minutos.
+### Methods at a glance
+- **Data cleaning:** 14 documented rules (R01–R14). Every rule logs how many records it touched, and nothing is deleted silently.
+- **Clustering:** Gower distance (mixed data, pairwise missingness, no imputation) with fixed clinical ranges and equal weight per domain, then PAM / k-medoids (FasterPAM). The number of clusters `k` is chosen with a permutation null test.
+- **Replication:** leave-one-cohort-out, Hungarian matching, ARI and Jaccard with bootstrap confidence intervals.
+- **Trajectories:** linear mixed models with random intercept and slope (`statsmodels`), inverse probability weighting for dropout, regression-to-the-mean check and phenotype transitions.
+- **Prediction:** Explainable Boosting Machines and L1 logistic regression, validated on unseen cohorts or centres. Reported with ROC-AUC, PR-AUC, calibration (Brier score, slope) and decision curves. Leakage is guarded by code assertions.
 
-## Principios
+---
 
-- **Reproducible:** todos los parámetros están en `config.yaml`, con semilla fija (2026). Nada de números mágicos en el código.
-- **Replicación antes que descubrimiento:** un fenotipo solo cuenta si pasa el "pasaporte":
-  - tiene estructura frente a datos permutados;
-  - es estable (bootstrap);
-  - se reproduce en una cohorte que no se usó para descubrirlo;
-  - evoluciona distinto;
-  - se reconoce con pocas variables;
-  - tiene sentido clínico.
-- **Sin imputar la ausencia estructural:** lo que una cohorte no recoge nunca se inventa.
-- **Privacidad:** los datos están seudonimizados y no salen del entorno. Solo se muestran agregados, y las celdas con N < 10 se suprimen (`src/privacidad.py`).
+## Repository structure
 
-## Requerimientos
+> The code, notebooks and full report are written in Spanish.
 
 ```
-pandas
-numpy
-scipy
-scikit-learn
-statsmodels
-matplotlib
-seaborn
-plotly
-pyyaml
-openpyxl
-nbformat
-nbconvert
-ipykernel
-pyarrow
-kmedoids          # PAM (FasterPAM); Gower implementada en src/fenotipado.py
-interpret-core    # EBM (notebooks 06 y 07)
+├── main.ipynb                          ← executable end-to-end summary (the notebook presented to the jury)
+├── Informe.md                          ← full report: data, methods, results, limitations, jury Q&A
+├── config.yaml                         ← every parameter (thresholds, windows, k, seeds, paths)
+├── Workflow/
+│   ├── 01_analisis_exploratorio.ipynb  ← exploratory analysis: what data, from whom, when, what quality
+│   ├── 02_limpieza.ipynb               ← 14 cleaning rules, patient flow (CONSORT), clean tables
+│   ├── 03_fenotipado_ciberes.ipynb     ← symptom + function phenotypes in CIBERESUCICOVID (do not travel)
+│   ├── 04_fenotipado_comun.ipynb       ← phenotypes using all 3 cohorts together: the main phenotype
+│   ├── 05_trayectorias.ipynb           ← DLCO trajectories by phenotype (mixed model, dropout, transitions)
+│   ├── 06_modelo_alta.ipynb            ← can the phenotype be predicted at discharge? (EBM, 3 cohorts)
+│   ├── 07_modelo_fase_aguda.ipynb      ← adding acute-phase ICU data (EBM, CIBERESUCICOVID only)
+│   └── 08_modelo_primera_visita.ipynb  ← at the 3-month visit: who is still impaired at one year?
+└── src/                                ← reusable, documented functions
+    ├── carga.py                        data loading and long-format follow-up tables
+    ├── limpieza.py                     cleaning rules R01–R14 and cleaning log
+    ├── fenotipado.py                   Gower distance, PAM, null test, stability
+    ├── fenotipado_perfil.py            phenotyping driven by a profile in config.yaml
+    ├── pasaporte.py                    cross-cohort replication (Hungarian matching, Jaccard, ARI)
+    ├── trayectorias.py                 mixed models, contrasts, IPW
+    ├── fichas.py                       phenotype comparison tables (SMD and interpretation)
+    └── privacidad.py                   small-cell suppression (N < 10)
 ```
+
+---
+
+## Principles
+
+- **Reproducible:** every parameter lives in `config.yaml`, with a fixed seed (2026). There are no magic numbers in the code.
+- **Replication before discovery:** a phenotype only counts if it passes the passport, and failures are reported too.
+- **No imputation of structural missingness:** a variable that a cohort never collects is never invented.
+- **Interpretable by design:** real-patient medoids, additive models with one curve per variable, and a one-line clinical rule when that is all you need.
+- **Privacy first:** only aggregates are ever shown, with small cells suppressed (`src/privacidad.py`).
+
+## Limitations
+
+- Only 13 variables are comparable across all cohorts, so the replicable phenotype is respiratory only.
+- Dropout is corrected under a missing-at-random assumption. Dropout that depends on unobserved future DLCO cannot be ruled out.
+- TENACITY is small, so its estimates have wide intervals.
+- A fixed 80 % threshold is used instead of the lower limit of normal. Near the threshold, part of the "recovery" may be test variability.
+- At the 3-month visit, patients are ranked correctly across cohorts but absolute risk is not: probabilities should be **recalibrated locally** before clinical use.
+
+See [`Informe.md`](Informe.md) (Spanish) for the full report.
+
+## Team
+
+Developed during the Respira Hackathon, organised by **CIBERES** and **AstraZeneca**, by:
+
+- Carlos Palazón Domingo
+- Ferran Òdena
+- Nil Muriach López
+
 
