@@ -58,11 +58,11 @@ Before running any clustering we fixed, in [`config.yaml`](config.yaml), what a 
 
 | Check | How it is measured | Result (main phenotype) |
 |---|---|---|
-| Has structure | Silhouette vs. a null of 100 column-permuted datasets (must beat the 95th percentile) | ✅ 0.36 vs. 0.11 |
-| Is stable | Per-cluster bootstrap Jaccard, 200 resamples (≥ 0.75) | ✅ 0.92 |
-| Travels | Leave-one-cohort-out: medoid transfer vs. native clustering (ARI, Hungarian-matched Jaccard) | ✅ ARI 0.50–0.73 |
-| Evolves differently | Mixed model `DLCO ~ phenotype × log(time)` | ✅ −11.5 points at 12 months |
-| Recognisable with few variables | 1–2 question decision tree validated on unseen cohorts | ✅ "FVC at 3 m ≤ 83 %?" matches 95–97 % |
+| Has structure | Silhouette vs. a null of 100 column-permuted datasets (must beat the 95th percentile) | 0.36 vs. 0.11 |
+| Is stable | Per-cluster bootstrap Jaccard, 200 resamples (≥ 0.75) | 0.92 |
+| Travels | Leave-one-cohort-out: medoid transfer vs. native clustering (ARI, Hungarian-matched Jaccard) | ARI 0.50–0.73 |
+| Evolves differently | Mixed model `DLCO ~ phenotype × log(time)` | −11.5 points at 12 months |
+| Recognisable with few variables | 1–2 question decision tree validated on unseen cohorts | "FVC at 3 m ≤ 83 %?" matches 95–97 % |
 | Makes clinical sense | Profiles built from variables **not** used to define the phenotype | Pending review by the clinical team |
 
 ### Why this was hard
