@@ -2,7 +2,7 @@
 
 # Cross-Cohort Lung Phenotypes after Severe Respiratory Infection
 
-**Digital phenotyping of post-infectious sequelae (Challenge 2).** We looked for groups of patients with lasting sequelae after a severe respiratory infection (mostly COVID-19 ICU and ward patients) that **hold up when you move to a different cohort**, described **how they evolve over time**, and studied **when in follow-up they can be predicted**.
+**Digital phenotyping of post-infectious sequelae (Challenge 4).** We looked for groups of patients with lasting sequelae after a severe respiratory infection (mostly COVID-19 ICU and ward patients) that **hold up when you move to a different cohort**, described **how they evolve over time**, and studied **when in follow-up they can be predicted**.
 
 The project works with a **dataset of real-world clinical data from real patients**, provided under privacy safeguards during the hackathon. It merges four Spanish clinical cohorts (CIBERESUCICOVID, POSTCOVID-Lleida, TENACITY and Virgen del Rocío) and covers **9,809 unique patients**: demographics, comorbidities, hospital and ICU stay, and follow-up visits with lung function tests, symptoms, CT imaging and questionnaires.
 
